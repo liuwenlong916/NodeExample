@@ -8,6 +8,7 @@ http
   .createServer((req, res) => {
     handler(req, res, err => {
       res.statusCode = 404
+      console.log(err)
       res.end('no such location')
     })
   })
