@@ -7,6 +7,7 @@ git pull
 docker-compose down
 docker-compose up -d --force-recreate --build
 
+echo docker服务部署成功
 # 定制镜像 Dockerfile
 # docker build -t myapp:pm2 ./backend
 
