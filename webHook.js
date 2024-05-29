@@ -22,7 +22,7 @@ handler.on('push', event => {
   console.log('Received * ', event.payload)
   if (event.payload.ref === 'refs/heads/master') {
     console.log('deploy master..')
-    run_cmd('sh', ['./deploy-dev.sh'], function (text) {
+    run_cmd('sudo sh', ['./deploy-dev.sh'], function (text) {
       console.log(text)
     })
   }
