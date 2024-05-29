@@ -8,6 +8,8 @@ echo 代码更新成功
 sudo docker-compose down
 echo docker服务停止
 
+
+
 sudo docker-compose up -d --force-recreate --build
 echo docker服务部署成功
 # 定制镜像 Dockerfile
