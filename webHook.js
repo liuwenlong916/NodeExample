@@ -19,7 +19,7 @@ handler.on('error', err => {
   console.error('Error', err.message)
 })
 handler.on('push', event => {
-  console.log('Received * ', event.payload)
+  // console.log('Received * ', event.payload)
   if (event.payload.ref === 'refs/heads/master') {
     console.log('deploy master..')
     run_cmd('sh', ['./deploy-dev.sh'], function (text) {
