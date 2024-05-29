@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "lint": "eslint .",
+    "hooks": "pm2 start webHook.js",
     "lint:fix": "eslint --fix ."
   },
   "bin": "bin/www",
@@ -30,6 +31,7 @@
     "jwa": "^2.0.0",
     "log4js": "^6.3.0",
     "mime": "^2.4.6",
+    "pm2": "^5.4.0",
     "serve-favicon": "^2.5.0",
     "urllib": "^2.36.1"
   },
