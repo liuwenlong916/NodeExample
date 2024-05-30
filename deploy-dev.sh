@@ -5,7 +5,7 @@ echo Deploy Project
 git pull 
 # && sudo docker-compose down && sudo docker rmi nodeexample_app-pm2 && sudo docker-compose up -d --force-recreate --build
 # echo 代码更新成功
-docker-compose up -d --force-recreate --build
+
 # 强制重新编译容器
 sudo docker-compose down
 # echo docker服务停止
