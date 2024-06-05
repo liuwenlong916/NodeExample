@@ -1,3 +1,4 @@
+date >> deploy.log
 echo "Deploy Project"
 
 # 获取最新版代码
@@ -26,3 +27,5 @@ else
     echo "docker-compose up failed. Check deploy.log for details."
     exit 1
 fi
+echo "结束时间:" >> deploy.log
+date >> deploy.log
