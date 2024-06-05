@@ -21,8 +21,8 @@ sudo docker-compose down
 
 # 删除无用镜像
 echo y | sudo docker image prune
-sudo docker rmi nodeexample_app-pm2
-echo "原始镜像删除" >> deploy.log
+# sudo docker rmi nodeexample_app-pm2
+# echo "原始镜像删除" >> deploy.log
 
 sudo docker-compose up -d --force-recreate --build
 if [ $? -eq 0 ]; then
