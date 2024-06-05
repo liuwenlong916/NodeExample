@@ -7,8 +7,8 @@ services:
     #直接从git拉去
     # build: git@github.com:su37josephxia/docker_ci.git#:backend
     # 需要链接本地代码时
-    # volumes:
-    #   - ./backend:/usr/src/app
+    volumes:
+      - ./files:./files
     ports:
       - '3000:3000'
   # mongo:
