@@ -30,4 +30,4 @@ else
 fi
 echo "结束时间:" >> deploy.log
 date +%Y/%m/%d_%H:%M:%S >> deploy.log
-echo "======================" >> deeploy.log
+echo "======================" >> deploy.log
