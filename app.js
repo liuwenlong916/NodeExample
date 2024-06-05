@@ -209,13 +209,14 @@ app.post('/upload', (req, res) => {
   const uploadDir = req.DocManager.storageRootPath(userIp)
   const uploadDirTmp = path.join(uploadDir, 'tmp') // and create directory for temporary files if it doesn't exist
   req.DocManager.createDirectory(uploadDirTmp)
-  console.log('上传', userIp, uploadDir, uploadDirTmp)
+  console.log('上传', req)
 
   const form = new formidable.IncomingForm() // create a new incoming form
   form.uploadDir = uploadDirTmp // and write there all the necessary parameters
   form.keepExtensions = true
 
   form.parse(req, (err, fields, files) => {
+    console.log('form.parse', fields, files)
     // parse this form
     if (err) {
       // if an error occurs
@@ -261,6 +262,7 @@ app.post('/upload', (req, res) => {
     }
 
     fileSystem.rename(file.path, `${uploadDir}/${file.name}`, error => {
+      console.log('rename', file.name, file.path, uploadDir, file)
       // rename a file
       // DocManager.cleanFolderRecursive(uploadDirTmp, true);  // clean the folder with temporary files
       res.writeHead(200, { 'Content-Type': 'text/plain' })
