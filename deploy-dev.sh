@@ -1,5 +1,5 @@
-date >> deploy.log
-echo "Deploy Project"
+
+date +%Y/%m/%d_%H:%M:%S >> deploy.log
 echo "Deploy Project" >> deploy.log
 
 # 获取最新版代码
@@ -29,5 +29,5 @@ else
     exit 1
 fi
 echo "结束时间:" >> deploy.log
-date >> deploy.log
+date +%Y/%m/%d_%H:%M:%S >> deploy.log
 echo "======================" >> deeploy.log
