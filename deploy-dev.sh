@@ -13,7 +13,7 @@ echo "代码更新成功" >> deploy.log
 sudo docker-compose down
 
 # 删除无用镜像
-sudo docker image prune
+ echo y | sudo docker image prune
 
 # sudo docker rmi nodeexample_app-pm2
 # echo "原始镜像删除" >> deploy.log
