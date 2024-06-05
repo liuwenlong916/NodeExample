@@ -1,5 +1,6 @@
 date >> deploy.log
 echo "Deploy Project"
+echo "Deploy Project" >> deploy.log
 
 # 获取最新版代码
 git pull
