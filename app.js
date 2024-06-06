@@ -111,6 +111,305 @@ app.get('/', (req, res) => {
   }
 })
 
+app.get('/editor-config', (req, res) => {
+  // define a handler for editing document
+  try {
+    req.docManager = new docManager(req, res)
+
+    var fileName = fileUtility.getFileName(req.query.fileName)
+    let { fileExt } = req.query
+    const history = []
+    const historyData = []
+    const lang = req.docManager.getLang()
+    const user = users.getUser(req.query.userid)
+    const userDirectUrl = req.query.directUrl == 'true'
+
+    const userid = user.id
+    const { name } = user
+
+    let actionData = 'null'
+    if (req.query.action) {
+      try {
+        actionData = JSON.stringify(JSON.parse(req.query.action))
+      } catch (ex) {
+        console.log(ex)
+      }
+    }
+
+    let type = req.query.type || '' // type: embedded/mobile/desktop
+    if (type == '') {
+      type = new RegExp(configServer.get('mobileRegEx'), 'i').test(req.get('User-Agent'))
+        ? 'mobile'
+        : 'desktop'
+    } else if (type != 'mobile' && type != 'embedded') {
+      type = 'desktop'
+    }
+
+    const templatesImageUrl = req.docManager.getTemplateImageUrl(fileUtility.getFileType(fileName))
+    const createUrl = req.docManager.getCreateUrl(
+      fileUtility.getFileType(fileName),
+      userid,
+      type,
+      lang
+    )
+    const templates = [
+      {
+        image: '',
+        title: 'Blank',
+        url: createUrl
+      },
+      {
+        image: templatesImageUrl,
+        title: 'With sample content',
+        url: `${createUrl}&sample=true`
+      }
+    ]
+
+    const userGroup = user.group
+    const { reviewGroups } = user
+    const { commentGroups } = user
+    const { userInfoGroups } = user
+
+    if (fileExt != null) {
+      var fileName = req.docManager.createDemo(!!req.query.sample, fileExt, userid, name, false) // create demo document of a given extension
+
+      // get the redirect path
+      const redirectPath = `${req.docManager.getServerUrl()}/editor?fileName=${encodeURIComponent(
+        fileName
+      )}${req.docManager.getCustomParams()}`
+      res.redirect(redirectPath)
+      return
+    }
+    fileExt = fileUtility.getFileExtension(fileName)
+
+    const userAddress = req.docManager.curUserHostAddress()
+    if (!req.docManager.existsSync(req.docManager.storagePath(fileName, userAddress))) {
+      // if the file with a given name doesn't exist
+      throw {
+        message: `File not found: ${fileName}` // display error message
+      }
+    }
+    const key = req.docManager.getKey(fileName)
+    const url = req.docManager.getDownloadUrl(fileName, true)
+    const directUrl = req.docManager.getDownloadUrl(fileName)
+    let mode = req.query.mode || 'edit' // mode: view/edit/review/comment/fillForms/embedded
+
+    let canEdit = configServer.get('editedDocs').indexOf(fileExt) != -1 // check if this file can be edited
+    if (
+      ((!canEdit && mode == 'edit') || mode == 'fillForms') &&
+      configServer.get('fillDocs').indexOf(fileExt) != -1
+    ) {
+      mode = 'fillForms'
+      canEdit = true
+    }
+    if (!canEdit && mode == 'edit') {
+      mode = 'view'
+    }
+    const submitForm = mode == 'fillForms' && userid == 'uid-1' && !1
+
+    let countVersion = 1
+
+    const historyPath = req.docManager.historyPath(fileName, userAddress)
+    let changes = null
+    let keyVersion = key
+
+    if (historyPath != '') {
+      countVersion = req.docManager.countVersion(historyPath) + 1 // get the number of file versions
+      for (var i = 1; i <= countVersion; i++) {
+        // get keys to all the file versions
+        if (i < countVersion) {
+          const keyPath = req.docManager.keyPath(fileName, userAddress, i)
+          if (!fileSystem.existsSync(keyPath)) continue
+          keyVersion = `${fileSystem.readFileSync(keyPath)}`
+        } else {
+          keyVersion = key
+        }
+        history.push(req.docManager.getHistory(fileName, changes, keyVersion, i)) // write all the file history information
+
+        const historyD = {
+          fileType: fileExt.slice(1),
+          version: i,
+          key: keyVersion,
+          url:
+            i == countVersion
+              ? url
+              : `${req.docManager.getServerUrl(true)}/history?fileName=${encodeURIComponent(
+                  fileName
+                )}&file=prev${fileExt}&ver=${i}&useraddress=${userAddress}`,
+          directUrl: !userDirectUrl
+            ? null
+            : i == countVersion
+            ? directUrl
+            : `${req.docManager.getServerUrl(false)}/history?fileName=${encodeURIComponent(
+                fileName
+              )}&file=prev${fileExt}&ver=${i}`
+        }
+
+        if (
+          i > 1 &&
+          req.docManager.existsSync(req.docManager.diffPath(fileName, userAddress, i - 1))
+        ) {
+          // check if the path to the file with document versions differences exists
+          historyD.previous = {
+            // write information about previous file version
+            fileType: historyData[i - 2].fileType,
+            key: historyData[i - 2].key,
+            url: historyData[i - 2].url,
+            directUrl: !userDirectUrl ? null : historyData[i - 2].directUrl
+          }
+          const changesUrl = `${req.docManager.getServerUrl(
+            true
+          )}/history?fileName=${encodeURIComponent(fileName)}&file=diff.zip&ver=${
+            i - 1
+          }&useraddress=${userAddress}`
+          historyD.changesUrl = changesUrl // get the path to the diff.zip file and write it to the history object
+        }
+
+        historyData.push(historyD)
+
+        if (i < countVersion) {
+          const changesFile = req.docManager.changesPath(fileName, userAddress, i) // get the path to the file with document changes
+          changes = req.docManager.getChanges(changesFile) // get changes made in the file
+        }
+      }
+    } else {
+      // if history path is empty
+      history.push(req.docManager.getHistory(fileName, changes, keyVersion, countVersion)) // write the history information about the last file version
+      historyData.push({
+        fileType: fileExt.slice(1),
+        version: countVersion,
+        key,
+        url,
+        directUrl: !userDirectUrl ? null : directUrl
+      })
+    }
+
+    if (cfgSignatureEnable) {
+      for (var i = 0; i < historyData.length; i++) {
+        historyData[i].token = jwt.sign(historyData[i], cfgSignatureSecret, {
+          expiresIn: cfgSignatureSecretExpiresIn
+        }) // sign token with given data using signature secret
+      }
+    }
+
+    // file config data
+    const argss = {
+      apiUrl: siteUrl + configServer.get('apiUrl'),
+      file: {
+        name: fileName,
+        ext: fileUtility.getFileExtension(fileName, true),
+        uri: url,
+        directUrl: !userDirectUrl ? null : directUrl,
+        uriUser: directUrl,
+        version: countVersion,
+        created: new Date().toDateString(),
+        favorite: user.favorite != null ? user.favorite : 'null'
+      },
+      editor: {
+        type,
+        documentType: fileUtility.getFileType(fileName),
+        key,
+        token: '',
+        callbackUrl: req.docManager.getCallback(fileName),
+        createUrl: userid != 'uid-0' ? createUrl : null,
+        templates: user.templates ? templates : null,
+        isEdit:
+          canEdit &&
+          (mode == 'edit' || mode == 'view' || mode == 'filter' || mode == 'blockcontent'),
+        review: canEdit && (mode == 'edit' || mode == 'review'),
+        chat: userid != 'uid-0',
+        coEditing: mode == 'view' && userid == 'uid-0' ? { mode: 'strict', change: false } : null,
+        comment:
+          mode != 'view' && mode != 'fillForms' && mode != 'embedded' && mode != 'blockcontent',
+        fillForms:
+          mode != 'view' && mode != 'comment' && mode != 'embedded' && mode != 'blockcontent',
+        modifyFilter: mode != 'filter',
+        modifyContentControl: mode != 'blockcontent',
+        copy: !user.deniedPermissions.includes('copy'),
+        download: !user.deniedPermissions.includes('download'),
+        print: !user.deniedPermissions.includes('print'),
+        mode: mode != 'view' ? 'edit' : 'view',
+        canBackToFolder: type != 'embedded',
+        backUrl: `${req.docManager.getServerUrl()}/`,
+        curUserHostAddress: req.docManager.curUserHostAddress(),
+        lang,
+        userid: userid != 'uid-0' ? userid : null,
+        name,
+        userGroup,
+        reviewGroups: JSON.stringify(reviewGroups),
+        commentGroups: JSON.stringify(commentGroups),
+        userInfoGroups: JSON.stringify(userInfoGroups),
+        fileChoiceUrl,
+        submitForm,
+        plugins: JSON.stringify(plugins),
+        actionData,
+        fileKey:
+          userid != 'uid-0'
+            ? JSON.stringify({ fileName, userAddress: req.docManager.curUserHostAddress() })
+            : null,
+        instanceId: userid != 'uid-0' ? req.docManager.getInstanceId() : null,
+        protect: !user.deniedPermissions.includes('protect')
+      },
+      history,
+      historyData,
+      dataInsertImage: {
+        fileType: 'png',
+        url: `${req.docManager.getServerUrl(true)}/images/logo.png`,
+        directUrl: !userDirectUrl ? null : `${req.docManager.getServerUrl()}/images/logo.png`
+      },
+      dataCompareFile: {
+        fileType: 'docx',
+        url: `${req.docManager.getServerUrl(true)}/assets/sample/sample.docx`,
+        directUrl: !userDirectUrl
+          ? null
+          : `${req.docManager.getServerUrl()}/assets/sample/sample.docx`
+      },
+      dataMailMergeRecipients: {
+        fileType: 'csv',
+        url: `${req.docManager.getServerUrl(true)}/csv`,
+        directUrl: !userDirectUrl ? null : `${req.docManager.getServerUrl()}/csv`
+      },
+      usersForMentions: user.id != 'uid-0' ? users.getUsersForMentions(user.id) : null,
+      usersForProtect: user.id != 'uid-0' ? users.getUsersForProtect(user.id) : null
+    }
+
+    if (cfgSignatureEnable) {
+      app.render('config', argss, (err, html) => {
+        // render a config template with the parameters specified
+        if (err) {
+          console.log(err)
+        } else {
+          // sign token with given data using signature secret
+          argss.editor.token = jwt.sign(JSON.parse(`{${html}}`), cfgSignatureSecret, {
+            expiresIn: cfgSignatureSecretExpiresIn
+          })
+          argss.dataInsertImage.token = jwt.sign(argss.dataInsertImage, cfgSignatureSecret, {
+            expiresIn: cfgSignatureSecretExpiresIn
+          })
+          argss.dataCompareFile.token = jwt.sign(argss.dataCompareFile, cfgSignatureSecret, {
+            expiresIn: cfgSignatureSecretExpiresIn
+          })
+          argss.dataMailMergeRecipients.token = jwt.sign(
+            argss.dataMailMergeRecipients,
+            cfgSignatureSecret,
+            { expiresIn: cfgSignatureSecretExpiresIn }
+          )
+        }
+
+        res.render('config', argss, (err, html) => {
+          res.json(JSON.parse(`{${html}}`))
+        }) // render the editor template with the parameters specified
+      })
+    } else {
+      res.render('config', argss)
+    }
+  } catch (ex) {
+    console.log(ex)
+    res.status(500)
+    res.render('error', { message: `Server error: ${ex.message}` })
+  }
+})
+
 app.get('/download', (req, res) => {
   // define a handler for downloading files
   req.DocManager = new DocManager(req, res)
