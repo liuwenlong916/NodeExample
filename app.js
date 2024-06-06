@@ -114,7 +114,7 @@ app.get('/', (req, res) => {
 app.get('/editor-config', (req, res) => {
   // define a handler for editing document
   try {
-    req.docManager = new docManager(req, res)
+    req.docManager = new DocManager(req, res)
 
     var fileName = fileUtility.getFileName(req.query.fileName)
     let { fileExt } = req.query
