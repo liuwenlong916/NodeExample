@@ -47,6 +47,7 @@ const cfgSignatureSecret = configServer.get('token.secret')
 const verifyPeerOff = configServer.get('verify_peer_off')
 const plugins = config.get('plugins')
 
+// TODO: 登录获取token，操作文档校验token
 if (verifyPeerOff) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 }
