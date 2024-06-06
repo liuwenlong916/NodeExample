@@ -1350,8 +1350,6 @@ app.get('/editor-config', (req, res) => {
     const directUrl = req.docManager.getDownloadUrl(fileName)
     let mode = req.query.mode || 'edit' // mode: view/edit/review/comment/fillForms/embedded
 
-    console.log('config', config)
-    console.log('configServer', configServer)
     let canEdit = configServer.get('editedDocs').indexOf(fileExt) != -1 // check if this file can be edited
     if (
       ((!canEdit && mode == 'edit') || mode == 'fillForms') &&
@@ -1531,8 +1529,10 @@ app.get('/editor-config', (req, res) => {
       usersForProtect: user.id != 'uid-0' ? users.getUsersForProtect(user.id) : null
     }
 
+    console.log('argss', argss)
     if (cfgSignatureEnable) {
       app.render('config', argss, (err, html) => {
+        console.log('render config', err, html)
         // render a config template with the parameters specified
         if (err) {
           console.log(err)
@@ -1555,6 +1555,7 @@ app.get('/editor-config', (req, res) => {
         }
 
         res.render('config', argss, (err, html) => {
+          console.log('render config', err, html)
           res.json(JSON.parse(`{${html}}`))
         }) // render the editor template with the parameters specified
       })
